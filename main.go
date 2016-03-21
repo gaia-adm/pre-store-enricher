@@ -1,6 +1,5 @@
 /*
 	TODO:
-	- SIGTERM
 	- circleCI
 	- send / receive
 	- Json processing
