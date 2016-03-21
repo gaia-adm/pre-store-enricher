@@ -1,0 +1,8 @@
+{
+  "Env" : [ ],
+  "Volumes" : { },
+  "ExposedPorts" : { },
+  "HostConfig" : {
+    "Binds" : [ ]
+  }
+}
