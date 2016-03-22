@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"github.com/streadway/amqp"
 )
 
 var log = logrus.New()
@@ -45,6 +46,9 @@ func main() {
 		log.Warn("Signal received: ", sig)
 		done <- true
 	}()
+
+	connectedToRabbit := make(chan *amqp.Connection)
+	go InitRabbitConn(connectedToRabbit)
 
 	log.Info("awaiting signal")
 	<-done
