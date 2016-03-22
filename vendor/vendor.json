@@ -7,6 +7,12 @@
 			"path": "github.com/Sirupsen/logrus",
 			"revision": "4b6ea7319e214d98c938f12692336f7ca9348d6b",
 			"revisionTime": "2016-03-17T14:11:10Z"
+		},
+		{
+			"checksumSHA1": "uboKbybSheSH99DWeX328g+tfbw=",
+			"path": "github.com/streadway/amqp",
+			"revision": "2e25825abdbd7752ff08b270d313b93519a0a232",
+			"revisionTime": "2016-03-11T22:55:03+01:00"
 		}
 	],
 	"rootPath": "github.com/gaia-adm/pre-store-enricher"
