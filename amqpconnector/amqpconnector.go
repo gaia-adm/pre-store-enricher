@@ -1,10 +1,10 @@
 package amqpconnector
 
 import (
-	"github.com/streadway/amqp"
 	"os"
 	"time"
 	"github.com/gaia-adm/pre-store-enricher/log"
+	"github.com/streadway/amqp"
 )
 
 var pseAmqpUrl = "amqp://guest:guest@localhost:5672"
