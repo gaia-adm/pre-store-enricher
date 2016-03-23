@@ -8,30 +8,14 @@
 package main
 
 import (
-	"github.com/Sirupsen/logrus"
 	"os"
 	"os/signal"
 	"syscall"
 	"github.com/streadway/amqp"
+	"github.com/gaia-adm/pre-store-enricher/log"
+	"github.com/gaia-adm/pre-store-enricher/amqpconnector"
 )
 
-var log = logrus.New()
-
-func init() {
-
-	//set log level according to env var
-	logLevel := os.Getenv("PSE_LOG_LEVEL")
-	if logLevel != "" {
-		level, err := logrus.ParseLevel(logLevel)
-		if err != nil {
-			log.Error("Failed to set logger level: ", err)
-		} else {
-			log.Level = level
-		}
-	} else {
-		log.Level = logrus.DebugLevel
-	}
-}
 
 func main() {
 
@@ -43,14 +27,14 @@ func main() {
 	go func() {
 		sig := <-sigs
 
-		log.Warn("Signal received: ", sig)
+		log.Log.Warn("Signal received: ", sig)
 		done <- true
 	}()
 
 	connectedToRabbit := make(chan *amqp.Connection)
-	go InitRabbitConn(connectedToRabbit)
+	go amqpconnector.InitRabbitConn(connectedToRabbit)
 
-	log.Info("awaiting signal")
+	log.Log.Info("awaiting signal")
 	<-done
-	log.Warn("exiting")
+	log.Log.Warn("exiting")
 }
