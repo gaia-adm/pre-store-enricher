@@ -5,7 +5,8 @@ import (
 	"os"
 )
 
-var Log = logrus.New()
+var log = logrus.New()
+var logger = GetLogger("log")
 
 func init() {
 
@@ -14,12 +15,16 @@ func init() {
 	if logLevel != "" {
 		level, err := logrus.ParseLevel(logLevel)
 		if err != nil {
-			Log.Error("Failed to set logger level: ", err)
+			logger.Error("Failed to set logger level: ", err)
 		} else {
-			Log.Level = level
+			log.Level = level
 		}
 	} else {
-		Log.Level = logrus.DebugLevel
+		log.Level = logrus.DebugLevel
 	}
+
 }
 
+func GetLogger(context string) *logrus.Entry {
+	return log.WithFields(logrus.Fields{"context": context})
+}
