@@ -16,7 +16,8 @@ const (
 
 var initCLogger = log.GetLogger("initconsume")
 
-func initForConsume(readyToConsume chan<- InitResult, shutdownRequested chan struct{}) {
+func initForConsume(shutdownRequested chan struct{}) (readyToConsume chan InitResult)  {
+	readyToConsume = make(chan InitResult)
 	go func() {
 		conn, channel, err := connAndChannel(shutdownRequested, initCLogger)
 
@@ -47,6 +48,8 @@ func initForConsume(readyToConsume chan<- InitResult, shutdownRequested chan str
 
 		readyToConsume <- InitResult{conn, nil}
 	}()
+
+	return readyToConsume
 }
 
 func connAndChannel(shutdownRequested chan struct{}, logger *logrus.Entry) (*amqp.Connection, *amqp.Channel, error) {

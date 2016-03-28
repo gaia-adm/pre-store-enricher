@@ -10,8 +10,25 @@ const (
 
 var initSLogger = log.GetLogger("initsend")
 
-func initForSend(readyToConsume chan<- InitResult, shutdownRequested chan struct{}) {
+func initForSend(shutdownRequested chan struct{}) (readyToSend chan InitResult) {
+	readyToSend = make(chan InitResult)
 	go func() {
-		return
+		conn, channel, err := connAndChannel(shutdownRequested, initSLogger)
+
+		//Something went wrong, probably shutdown requested
+		if err != nil {
+			readyToSend <- InitResult{conn, err}
+			return
+		}
+
+		err = declareExchange(sendExchangeName, channel, initSLogger)
+		if err != nil {
+			readyToSend <- InitResult{conn, err}
+			return
+		}
+
+		readyToSend <- InitResult{conn, nil}
 	}()
+
+	return readyToSend
 }

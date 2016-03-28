@@ -24,10 +24,8 @@ func (d *dispatcher) RunAmqp(errorOccurred chan<- error) {
 
 	go func() {
 		//Connect to rabbit with two separate connections (one for consumers and one for senders
-		readyToConsume := make(chan InitResult)
-		initForConsume(readyToConsume, d.shutdownRequested)
-		readyToSend := make(chan InitResult)
-		initForSend(readyToSend, d.shutdownRequested)
+		readyToConsume := initForConsume(d.shutdownRequested)
+		readyToSend := initForSend(d.shutdownRequested)
 
 		//Wait for initForConsume to complete init
 		select {
@@ -37,7 +35,7 @@ func (d *dispatcher) RunAmqp(errorOccurred chan<- error) {
 			return
 		case result := <-readyToConsume:
 			if result.Err != nil {
-				dispatcherLogger.Error("failed to init amqp connection for consume: ", result.Err)
+				dispatcherLogger.Error("failed to init amqp connection for consume (before validating consume): ", result.Err)
 				errorOccurred <- result.Err
 			} else {
 				dispatcherLogger.Info("ready for consume")
@@ -48,15 +46,15 @@ func (d *dispatcher) RunAmqp(errorOccurred chan<- error) {
 		//Wait for initForSend to complete init
 		select {
 		case <-d.shutdownRequested:
-			dispatcherLogger.Warn("shutdown requested from RunAmqp, exiting")
+			dispatcherLogger.Warn("shutdown requested from RunAmqp (after validating init consume before validating send), exiting")
 			d.shutdownCompleted <- struct{}{}
 			return
 		case result := <-readyToSend:
 			if result.Err != nil {
-				dispatcherLogger.Error("failed to init amqp connection for consume: ", result.Err)
+				dispatcherLogger.Error("failed to init amqp connection for send: ", result.Err)
 				errorOccurred <- result.Err
 			} else {
-				dispatcherLogger.Info("ready for consume")
+				dispatcherLogger.Info("ready for send")
 				d.sendConn = result.Connection
 			}
 		}
