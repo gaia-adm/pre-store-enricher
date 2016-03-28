@@ -14,11 +14,11 @@ const (
 	consumerRoutingKey            = "event.#"
 )
 
-var initcLogger = log.GetLogger("initconsume")
+var initCLogger = log.GetLogger("initconsume")
 
 func initForConsume(readyToConsume chan<- InitResult, shutdownRequested chan struct{}) {
 	go func() {
-		conn, channel, err := connAndChannel(shutdownRequested, initcLogger)
+		conn, channel, err := connAndChannel(shutdownRequested, initCLogger)
 
 		//Something went wrong, probably shutdown requested
 		if err != nil {
@@ -26,13 +26,13 @@ func initForConsume(readyToConsume chan<- InitResult, shutdownRequested chan str
 			return
 		}
 
-		err = declareExchange(consumeExchangeName, channel, initcLogger)
+		err = declareExchange(consumeExchangeName, channel, initCLogger)
 		if err != nil {
 			readyToConsume <- InitResult{conn, err}
 			return
 		}
 
-		err = declareExchange(consumeDeadLetterExchangeName, channel, initcLogger)
+		err = declareExchange(consumeDeadLetterExchangeName, channel, initCLogger)
 		if err != nil {
 			readyToConsume <- InitResult{conn, err}
 			return
@@ -81,11 +81,11 @@ func declareAndBindQueue(queueName string, exchangeName string, conn *amqp.Conne
 		extraArgs, // arguments
 	)
 	if err != nil {
-		initcLogger.Error(" error when declaring Queue: ", queueName, ", error msg: ", err)
+		initCLogger.Error(" error when declaring Queue: ", queueName, ", error msg: ", err)
 		readyToConsume <- InitResult{conn, err}
 		return err
 	} else {
-		initcLogger.Info("declared queue: ", queueName)
+		initCLogger.Info("declared queue: ", queueName)
 	}
 
 	err = channel.QueueBind(
@@ -96,11 +96,11 @@ func declareAndBindQueue(queueName string, exchangeName string, conn *amqp.Conne
 		nil,                // arguments
 	)
 	if err != nil {
-		initcLogger.Error(" error when binding Queue: ", queueName, ", to exchange: ", exchangeName, ", using routing key: ", consumerRoutingKey, ", error msg: ", err)
+		initCLogger.Error(" error when binding Queue: ", queueName, ", to exchange: ", exchangeName, ", using routing key: ", consumerRoutingKey, ", error msg: ", err)
 		readyToConsume <- InitResult{conn, err}
 		return err
 	} else {
-		initcLogger.Info("binded queue: ", queueName, ", to exchange: ", exchangeName, ", using routing key: ", consumerRoutingKey)
+		initCLogger.Info("binded queue: ", queueName, ", to exchange: ", exchangeName, ", using routing key: ", consumerRoutingKey)
 		return nil
 	}
 

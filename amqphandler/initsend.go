@@ -8,7 +8,7 @@ const (
 	sendExchangeName           = "events-to-index"
 )
 
-var initsLogger = log.GetLogger("initsend")
+var initSLogger = log.GetLogger("initsend")
 
 func initForSend(readyToConsume chan<- InitResult, shutdownRequested chan struct{}) {
 	go func() {
