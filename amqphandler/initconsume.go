@@ -1,7 +1,6 @@
 package amqphandler
 
 import (
-	"github.com/Sirupsen/logrus"
 	"github.com/gaia-adm/pre-store-enricher/log"
 	"github.com/streadway/amqp"
 )
@@ -16,6 +15,9 @@ const (
 
 var initCLogger = log.GetLogger("initconsume")
 
+//initForConsume connects to amqp in a separate goroutine defines exchange and queue to get
+//the messages from (also dead letter exchange and queue) and send back the connection on the
+//returned channel
 func initForConsume(shutdownRequested chan struct{}) (readyToConsume chan InitResult)  {
 	readyToConsume = make(chan InitResult)
 	go func() {
@@ -50,28 +52,6 @@ func initForConsume(shutdownRequested chan struct{}) (readyToConsume chan InitRe
 	}()
 
 	return readyToConsume
-}
-
-func connAndChannel(shutdownRequested chan struct{}, logger *logrus.Entry) (*amqp.Connection, *amqp.Channel, error) {
-	conn, err := initRabbitConn(shutdownRequested, logger)
-
-	//Something went wrong, probably shutdown requested
-	if err != nil {
-		return conn, nil, err
-	}
-
-	go func() {
-		logger.Info("closing conn: %s", <-conn.NotifyClose(make(chan *amqp.Error)))
-	}()
-
-	logger.Info("got Connection, getting Channel")
-	channel, err := conn.Channel()
-	if err != nil {
-		logger.Error("error when creating a channel: ", err)
-		return conn, channel, err
-	}
-
-	return conn, channel, nil
 }
 
 func declareAndBindQueue(queueName string, exchangeName string, conn *amqp.Connection, channel *amqp.Channel, extraArgs amqp.Table, readyToConsume chan<- InitResult) (err error) {

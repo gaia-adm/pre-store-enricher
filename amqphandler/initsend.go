@@ -10,6 +10,8 @@ const (
 
 var initSLogger = log.GetLogger("initsend")
 
+//initForSend connects to amqp in a separate goroutine define a exchange to send
+//the messages to and send back the connection on the returned channel
 func initForSend(shutdownRequested chan struct{}) (readyToSend chan InitResult) {
 	readyToSend = make(chan InitResult)
 	go func() {

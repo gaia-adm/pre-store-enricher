@@ -30,12 +30,12 @@ func (d *dispatcher) RunAmqp(errorOccurred chan<- error) {
 		//Wait for initForConsume to complete init
 		select {
 		case <-d.shutdownRequested:
-			dispatcherLogger.Warn("shutdown requested from RunAmqp, exiting")
+			dispatcherLogger.Warn("shutdown requested from RunAmqp (before validating consume), exiting")
 			d.shutdownCompleted <- struct{}{}
 			return
 		case result := <-readyToConsume:
 			if result.Err != nil {
-				dispatcherLogger.Error("failed to init amqp connection for consume (before validating consume): ", result.Err)
+				dispatcherLogger.Error("failed to init amqp connection for consume: ", result.Err)
 				errorOccurred <- result.Err
 			} else {
 				dispatcherLogger.Info("ready for consume")
@@ -65,6 +65,7 @@ func (d *dispatcher) RunAmqp(errorOccurred chan<- error) {
 }
 
 func (d *dispatcher) ShutDown() {
+	dispatcherLogger.Warn("shutting down amqp (closing the shutdown channel)")
 	//broadcast to all that listen to shutdownRequested
 	close(d.shutdownRequested)
 	//wait for RunAmqp to notify that shutdown was completed
