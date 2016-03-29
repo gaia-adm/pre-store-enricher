@@ -59,6 +59,9 @@ func (d *dispatcher) RunAmqp(errorOccurred chan<- error) {
 			}
 		}
 
+		p := Processor{d.consumeConn, d.sendConn, consumeQueueName, sendExchangeName}
+		p.startConsume()
+
 		<-d.shutdownRequested
 		d.shutdownCompleted <- struct{}{}
 	}()
