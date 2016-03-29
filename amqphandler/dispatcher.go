@@ -30,7 +30,7 @@ func (d *dispatcher) RunAmqp(errorOccurred chan<- error) {
 		//Wait for initForConsume to complete init
 		select {
 		case <-d.shutdownRequested:
-			dispatcherLogger.Warn("shutdown requested from RunAmqp (before validating consume), exiting")
+			dispatcherLogger.Info("shutdown requested from RunAmqp (before validating consume), exiting")
 			d.shutdownCompleted <- struct{}{}
 			return
 		case result := <-readyToConsume:
@@ -46,7 +46,7 @@ func (d *dispatcher) RunAmqp(errorOccurred chan<- error) {
 		//Wait for initForSend to complete init
 		select {
 		case <-d.shutdownRequested:
-			dispatcherLogger.Warn("shutdown requested from RunAmqp (after validating init consume before validating send), exiting")
+			dispatcherLogger.Info("shutdown requested from RunAmqp (after validating init consume before validating send), exiting")
 			d.shutdownCompleted <- struct{}{}
 			return
 		case result := <-readyToSend:
@@ -59,16 +59,32 @@ func (d *dispatcher) RunAmqp(errorOccurred chan<- error) {
 			}
 		}
 
-		p := Processor{d.consumeConn, d.sendConn, consumeQueueName, sendExchangeName}
-		p.startConsume()
+		p := Processor{consumedQueue: consumeQueueName, sentToExchange: sendExchangeName}
+		p.startConsume(d.consumeConn, d.sendConn)
 
 		<-d.shutdownRequested
+		dispatcherLogger.Info("shutdown requested, going to cancel the consume channels and close the connections")
+		p.shutdown()
+
+		if err := d.consumeConn.Close(); err != nil {
+			dispatcherLogger.Errorf("AMQP consume connection close error: %s. Still exiting...", err)
+		} else {
+			dispatcherLogger.Info("successfully closed the consume connection")
+		}
+
+		if err := d.sendConn.Close(); err != nil {
+			dispatcherLogger.Errorf("AMQP send onnection close error: %s. Still exiting...", err)
+		} else {
+			dispatcherLogger.Info("successfully closed the send connection")
+		}
+
 		d.shutdownCompleted <- struct{}{}
 	}()
+
 }
 
 func (d *dispatcher) ShutDown() {
-	dispatcherLogger.Warn("shutting down amqp (closing the shutdown channel)")
+	dispatcherLogger.Info("shutting down amqp (closing the shutdown channel)")
 	//broadcast to all that listen to shutdownRequested
 	close(d.shutdownRequested)
 	//wait for RunAmqp to notify that shutdown was completed

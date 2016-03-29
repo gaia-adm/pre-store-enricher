@@ -18,10 +18,6 @@ func connAndChannel(shutdownRequested chan struct{}, logger *logrus.Entry) (*amq
 		return conn, nil, err
 	}
 
-	go func() {
-		logger.Info("closing conn: %s", <-conn.NotifyClose(make(chan *amqp.Error)))
-	}()
-
 	logger.Info("got Connection, getting Channel")
 	channel, err := conn.Channel()
 	if err != nil {

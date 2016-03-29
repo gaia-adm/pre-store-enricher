@@ -35,7 +35,7 @@ func initRabbitConn(shutdownRequested chan struct{}, logger *logrus.Entry) (conn
 			return conn, nil
 
 		case <-shutdownRequested:
-			logger.Warn("shutdown requested from initRabbitConn, exiting")
+			logger.Info("shutdown requested from initRabbitConn, exiting")
 			return nil, errors.New("shutdown requested")
 		}
 	}

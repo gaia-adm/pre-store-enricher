@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	sendExchangeName           = "events-to-index"
+	sendExchangeName = "events-to-index"
 )
 
 var initSLogger = log.GetLogger("initsend")
