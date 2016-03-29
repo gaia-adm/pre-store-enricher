@@ -1,10 +1,11 @@
 /*
 	TODO:
-	- send / receive
-	- Json processing
-	- http server
+	- multiple processors
+	- arrange code in a better way (better encapsulation)
 	- tests
+	- run go fmt, go vet, go doc as part of pipeline
 */
+
 package main
 
 import (
