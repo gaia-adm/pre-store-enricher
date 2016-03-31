@@ -18,10 +18,10 @@ var initCLogger = log.GetLogger("initconsume")
 //initForConsume connects to amqp in a separate goroutine defines exchange and queue to get
 //the messages from (also dead letter exchange and queue) and send back the connection on the
 //returned channel
-func initForConsume(shutdownRequested chan struct{}) (readyToConsume chan InitResult) {
+func initForConsume(closedOnShutdown chan struct{}) (readyToConsume chan InitResult) {
 	readyToConsume = make(chan InitResult)
 	go func() {
-		conn, channel, err := connAndChannel(shutdownRequested, initCLogger)
+		conn, channel, err := connAndChannel(closedOnShutdown, initCLogger)
 
 		//Something went wrong, probably shutdown requested
 		if err != nil {

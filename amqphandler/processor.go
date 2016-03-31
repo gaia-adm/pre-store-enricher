@@ -5,38 +5,47 @@ import (
 	"github.com/gaia-adm/pre-store-enricher/log"
 	"github.com/streadway/amqp"
 	"time"
+	"fmt"
+	"github.com/Sirupsen/logrus"
 )
 
 const (
 	consumerTag = "enricher-consumer"
 )
 
-var processLogger = log.GetLogger("processor")
-
 type Processor struct {
 	consumeChannel *amqp.Channel
 	sendChannel    *amqp.Channel
 	consumedQueue  string
 	sentToExchange string
-	done           chan struct{}
+	processLogger  *logrus.Entry
 }
 
-func (p *Processor) startConsume(consumeConn *amqp.Connection, sendConn *amqp.Connection) (err error) {
+func (p *Processor) startConsume(consumeConn *amqp.Connection, sendConn *amqp.Connection, processorId int) (err error) {
 
-	processLogger.Info("getting Channel from consume connection")
+	p.processLogger = log.GetLogger(fmt.Sprintf("%s%d", "processor", processorId))
+	p.processLogger.Info("getting amqpChannel from consume connection")
 	p.consumeChannel, err = consumeConn.Channel()
 	if err != nil {
-		processLogger.Error("error when creating a consume channel: ", err)
+		p.processLogger.Error("error when creating a consume amqpChannel: ", err)
 		return err
 	}
+
+	go func() {
+		p.processLogger.Infof("consume amqpChannel closed: %s", <-p.consumeChannel.NotifyClose(make(chan *amqp.Error)))
+	}()
 
 	p.sendChannel, err = sendConn.Channel()
 	if err != nil {
-		processLogger.Error("error when creating a send channel: ", err)
+		p.processLogger.Error("error when creating a send amqpChannel: ", err)
 		return err
 	}
 
-	processLogger.Info("starting Consume using tag: ", consumerTag)
+	go func() {
+		p.processLogger.Infof("send amqpChannel closed: %s", <-p.sendChannel.NotifyClose(make(chan *amqp.Error)))
+	}()
+
+	p.processLogger.Info("starting Consume messages from amqp using tag: ", consumerTag)
 	deliveries, err := p.consumeChannel.Consume(
 		p.consumedQueue, // name
 		consumerTag,     // consumerTag,
@@ -47,12 +56,11 @@ func (p *Processor) startConsume(consumeConn *amqp.Connection, sendConn *amqp.Co
 		nil,             // arguments
 	)
 	if err != nil {
-		processLogger.Error("error when trying to conume message from queue: ", p.consumedQueue)
+		p.processLogger.Error("error when trying to conume message from queue: ", p.consumedQueue)
 		return err
 	}
 
-	p.done = make(chan struct{})
-	go p.processDeliveries(p.sendChannel, deliveries, p.done)
+	p.processDeliveries(p.sendChannel, deliveries)
 
 	return nil
 }
@@ -60,22 +68,20 @@ func (p *Processor) startConsume(consumeConn *amqp.Connection, sendConn *amqp.Co
 func (p *Processor) shutdown() (err error) {
 
 	if err := p.consumeChannel.Cancel(consumerTag, false); err != nil {
-		processLogger.Errorf("Consumer channel cancel failed: %s", err)
+		p.processLogger.Errorf("Consumer channel cancel failed: %s", err)
 		return err
+	} else {
+		p.processLogger.Infof("Sent Cancel to consume amqpChannel to drain the deliveries")
+		return nil
 	}
-
 	//No need to Cancel the send channel. Cancel is used only to drain the deliveries chan
-	//we wait to deliveries chan to drain before returning from the function
-	<-p.done
-	processLogger.Info("deliveries chan drained, exiting from shutdown function")
-	return nil
 }
 
-func (p *Processor) processDeliveries(sendChannel *amqp.Channel, deliveries <-chan amqp.Delivery, done chan<- struct{}) {
+func (p *Processor) processDeliveries(sendChannel *amqp.Channel, deliveries <-chan amqp.Delivery) {
 
 	for d := range deliveries {
 
-		processLogger.Debugf(
+		p.processLogger.Debugf(
 			"got msg with length %dB delivery: [%v] %q",
 			len(d.Body),
 			d.DeliveryTag,
@@ -85,12 +91,12 @@ func (p *Processor) processDeliveries(sendChannel *amqp.Channel, deliveries <-ch
 		var f interface{}
 		err := json.Unmarshal(d.Body, &f)
 		if err != nil {
-			processLogger.Error("failed to unmarshal msg, sending Nack to amqp, error is:", err)
+			p.processLogger.Error("failed to unmarshal msg, sending Nack to amqp, error is:", err)
 			d.Nack(false, false) //we use dead letter, no need to requeue
 			continue
 		}
 
-		processLogger.Debug("unmarshalled the msg successfully")
+		p.processLogger.Debug("unmarshalled the msg successfully")
 
 		m := f.(map[string]interface{})
 		gaiaMap := make(map[string]interface{})
@@ -99,12 +105,12 @@ func (p *Processor) processDeliveries(sendChannel *amqp.Channel, deliveries <-ch
 		m["gaia"] = &gaiaMap
 		jsonToSend, err := json.Marshal(m)
 		if err != nil {
-			processLogger.Error("failed to marshal msg, sending Nack to amqp, error is:", err)
+			p.processLogger.Error("failed to marshal msg, sending Nack to amqp, error is:", err)
 			d.Nack(false, false) //we use dead letter, no need to requeue
 			continue
 		}
 
-		processLogger.Debug("marshalled the msg successfully after enriching it")
+		p.processLogger.Debug("marshalled the msg successfully after enriching it")
 
 		err = sendChannel.Publish(
 			p.sentToExchange, // publish to an exchange
@@ -121,16 +127,15 @@ func (p *Processor) processDeliveries(sendChannel *amqp.Channel, deliveries <-ch
 			})
 
 		if err != nil {
-			processLogger.Error("failed to send to exchange: ", p.sentToExchange, " Nacking the msg, error is: ", err)
+			p.processLogger.Error("failed to send to exchange: ", p.sentToExchange, " Nacking the msg, error is: ", err)
 			d.Nack(false, false) //we use dead letter, no need to requeue
 			continue
 		}
 
-		processLogger.Debug("published the msg successfully to exchange: ", p.sentToExchange)
+		p.processLogger.Debug("published the msg successfully to exchange: ", p.sentToExchange)
 
 		d.Ack(false) // Ack, msg sent successfully
 	}
 
-	processLogger.Info("deliveries channel closed")
-	done <- struct{}{} //inform that we exit
+	p.processLogger.Info("deliveries channel closed")
 }

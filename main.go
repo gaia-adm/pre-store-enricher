@@ -1,6 +1,5 @@
 /*
 	TODO:
-	- multiple processors
 	- arrange code in a better way (better encapsulation)
 	- tests
 	- run go fmt, go vet, go doc as part of pipeline
@@ -20,28 +19,20 @@ var logger = log.GetLogger("main")
 
 func main() {
 
+	//handle SIGINT or SIGTERM
 	sigs := make(chan os.Signal)
-	signalReceived := make(chan struct{})
-
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-
 	go func() {
 		sig := <-sigs
-
-		logger.Warn("Signal received in main: ", sig)
-		signalReceived <- struct{}{}
+		logger.Info("Signal received in main: ", sig, ", going to shutdown dispacher")
+		amqphandler.Dispatcher.ShutDown()
 	}()
 
-	amqpError := make(chan error)
-	amqphandler.Dispatcher.RunAmqp(amqpError)
-	logger.Info("awaiting signal in main")
+	err := amqphandler.Dispatcher.RunAmqp()
 
-	select {
-	case <-signalReceived:
-		amqphandler.Dispatcher.ShutDown()
-		logger.Warn("exiting from main due to signal")
-	case err := <-amqpError:
-		logger.Error("exiting! amqp throwed an error: ", err)
+	if _, ok := err.(*amqphandler.ShutDownError); ok {
+		logger.Info("exiting from main, due to shotdown: ", err)
+	} else {
+		logger.Error("exiting from main unexpectedly!: ", err)
 	}
-
 }

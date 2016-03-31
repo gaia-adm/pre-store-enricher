@@ -1,7 +1,6 @@
 package amqphandler
 
 import (
-	"errors"
 	"github.com/Sirupsen/logrus"
 	"github.com/streadway/amqp"
 	"os"
@@ -17,7 +16,7 @@ func init() {
 	}
 }
 
-func initRabbitConn(shutdownRequested chan struct{}, logger *logrus.Entry) (conn *amqp.Connection, err error) {
+func initRabbitConn(closedOnShutdown chan struct{}, logger *logrus.Entry) (conn *amqp.Connection, err error) {
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 	for {
@@ -34,9 +33,9 @@ func initRabbitConn(shutdownRequested chan struct{}, logger *logrus.Entry) (conn
 
 			return conn, nil
 
-		case <-shutdownRequested:
+		case <-closedOnShutdown:
 			logger.Info("shutdown requested from initRabbitConn, exiting")
-			return nil, errors.New("shutdown requested")
+			return nil, &ShutDownError{}
 		}
 	}
 }

@@ -10,18 +10,18 @@ type InitResult struct {
 	Err        error
 }
 
-func connAndChannel(shutdownRequested chan struct{}, logger *logrus.Entry) (*amqp.Connection, *amqp.Channel, error) {
-	conn, err := initRabbitConn(shutdownRequested, logger)
+func connAndChannel(closedOnShutdown chan struct{}, logger *logrus.Entry) (*amqp.Connection, *amqp.Channel, error) {
+	conn, err := initRabbitConn(closedOnShutdown, logger)
 
 	//Something went wrong, probably shutdown requested
 	if err != nil {
 		return conn, nil, err
 	}
 
-	logger.Info("got Connection, getting Channel")
+	logger.Info("got Connection, getting amqpChannel")
 	channel, err := conn.Channel()
 	if err != nil {
-		logger.Error("error when creating a channel: ", err)
+		logger.Error("error when creating an amqp channel: ", err)
 		return conn, channel, err
 	}
 
