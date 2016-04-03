@@ -88,24 +88,10 @@ func (p *Processor) processDeliveries(sendChannel *amqp.Channel, deliveries <-ch
 			d.Body,
 		)
 
-		var f interface{}
-		err := json.Unmarshal(d.Body, &f)
-		if err != nil {
-			p.processLogger.Error("failed to unmarshal msg, sending Nack to amqp, error is:", err)
-			d.Nack(false, false) //we use dead letter, no need to requeue
-			continue
-		}
+		jsonToSend, err := p.enrichMessage(&d.Body)
 
-		p.processLogger.Debug("unmarshalled the msg successfully")
-
-		m := f.(map[string]interface{})
-		gaiaMap := make(map[string]interface{})
-		t := time.Now()
-		gaiaMap["incoming_time"] = t.Format(time.RFC3339)
-		m["gaia"] = &gaiaMap
-		jsonToSend, err := json.Marshal(m)
 		if err != nil {
-			p.processLogger.Error("failed to marshal msg, sending Nack to amqp, error is:", err)
+			p.processLogger.Error("failed to enrich msg, sending Nack to amqp and continue to next msg")
 			d.Nack(false, false) //we use dead letter, no need to requeue
 			continue
 		}
@@ -121,7 +107,7 @@ func (p *Processor) processDeliveries(sendChannel *amqp.Channel, deliveries <-ch
 				Headers:         amqp.Table{},
 				ContentType:     "application/json",
 				ContentEncoding: "",
-				Body:            jsonToSend,
+				Body:            *jsonToSend,
 				DeliveryMode:    amqp.Persistent, // 2=persistent
 				Priority:        0,               // 0-9
 			})
@@ -138,4 +124,28 @@ func (p *Processor) processDeliveries(sendChannel *amqp.Channel, deliveries <-ch
 	}
 
 	p.processLogger.Info("deliveries channel closed")
+}
+
+func (p *Processor) enrichMessage(in *[]byte) (out *[]byte, err error) {
+	var f interface{}
+	err = json.Unmarshal(*in, &f)
+	if err != nil {
+		p.processLogger.Error("failed to unmarshal msg, error is:", err)
+		return nil, err
+	}
+
+	p.processLogger.Debug("unmarshalled the msg successfully")
+
+	m := f.(map[string]interface{})
+	gaiaMap := make(map[string]interface{})
+	t := time.Now()
+	gaiaMap["incoming_time"] = t.Format(time.RFC3339)
+	m["gaia"] = &gaiaMap
+	jsonToSend, err := json.Marshal(m)
+	if err != nil {
+		p.processLogger.Error("failed to marshal msg, error is:", err)
+		return nil, err
+	}
+
+	return &jsonToSend, nil
 }
