@@ -1,4 +1,4 @@
-package amqphandler
+package amqpinit
 
 import (
 	"github.com/gaia-adm/pre-store-enricher/log"
@@ -8,7 +8,7 @@ import (
 const (
 	consumeExchangeName           = "events-to-enrich"
 	consumeDeadLetterExchangeName = "events-to-enrich.deadletter"
-	consumeQueueName              = "events-to-enrich-q"
+	ConsumeQueueName              = "events-to-enrich-q"
 	consumeDeadLetterQueueName    = "events-to-enrich-q.deadletter"
 	consumerRoutingKey            = "event.#"
 )
@@ -18,7 +18,7 @@ var initCLogger = log.GetLogger("initconsume")
 //initForConsume connects to amqp in a separate goroutine defines exchange and queue to get
 //the messages from (also dead letter exchange and queue) and send back the connection on the
 //returned channel
-func initForConsume(closedOnShutdown chan struct{}) (readyToConsume chan InitResult) {
+func InitForConsume(closedOnShutdown chan struct{}) (readyToConsume chan InitResult) {
 	readyToConsume = make(chan InitResult)
 	go func() {
 		conn, channel, err := connAndChannel(closedOnShutdown, initCLogger)
@@ -41,7 +41,7 @@ func initForConsume(closedOnShutdown chan struct{}) (readyToConsume chan InitRes
 			return
 		}
 
-		if declareAndBindQueue(consumeQueueName, consumeExchangeName, conn, channel, amqp.Table{"x-dead-letter-exchange": consumeDeadLetterExchangeName}, readyToConsume) != nil {
+		if declareAndBindQueue(ConsumeQueueName, consumeExchangeName, conn, channel, amqp.Table{"x-dead-letter-exchange": consumeDeadLetterExchangeName}, readyToConsume) != nil {
 			return
 		}
 		if declareAndBindQueue(consumeDeadLetterQueueName, consumeDeadLetterExchangeName, conn, channel, nil, readyToConsume) != nil {

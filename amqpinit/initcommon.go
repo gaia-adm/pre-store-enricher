@@ -1,9 +1,16 @@
-package amqphandler
+package amqpinit
 
 import (
 	"github.com/Sirupsen/logrus"
 	"github.com/streadway/amqp"
 )
+
+type ShutDownError struct {
+}
+
+func (s *ShutDownError) Error() string {
+	return "shutdown requested"
+}
 
 type InitResult struct {
 	Connection *amqp.Connection

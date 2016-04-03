@@ -1,4 +1,4 @@
-package amqphandler
+package amqpinit
 
 import (
 	"github.com/Sirupsen/logrus"

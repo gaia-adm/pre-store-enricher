@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"github.com/gaia-adm/pre-store-enricher/amqpinit"
 )
 
 var logger = log.GetLogger("main")
@@ -30,7 +31,7 @@ func main() {
 
 	err := amqphandler.Dispatcher.RunAmqp()
 
-	if _, ok := err.(*amqphandler.ShutDownError); ok {
+	if _, ok := err.(*amqpinit.ShutDownError); ok {
 		logger.Info("exiting from main, due to shotdown: ", err)
 	} else {
 		logger.Error("exiting from main unexpectedly!: ", err)

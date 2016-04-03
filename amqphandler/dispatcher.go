@@ -6,6 +6,7 @@ import (
 	"github.com/streadway/amqp"
 	"sync"
 	"runtime"
+	"github.com/gaia-adm/pre-store-enricher/amqpinit"
 )
 
 type dispatcher struct {
@@ -13,13 +14,6 @@ type dispatcher struct {
 	consumeConn       *amqp.Connection
 	sendConn          *amqp.Connection
 	processors        []*Processor
-}
-
-type ShutDownError struct {
-}
-
-func (s *ShutDownError) Error() string {
-	return "shutdown requested"
 }
 
 var Dispatcher dispatcher
@@ -32,8 +26,8 @@ func init() {
 func (d *dispatcher) RunAmqp() (err error) {
 
 	//Connect to rabbit with two separate connections (one for consumers and one for senders
-	readyToConsume := initForConsume(d.closedOnShutdown)
-	readyToSend := initForSend(d.closedOnShutdown)
+	readyToConsume := amqpinit.InitForConsume(d.closedOnShutdown)
+	readyToSend := amqpinit.InitForSend(d.closedOnShutdown)
 
 	//Wait for initForConsume to complete init
 	result := <-readyToConsume
@@ -53,18 +47,18 @@ func (d *dispatcher) RunAmqp() (err error) {
 		d.sendConn = result.Connection
 	}
 
-	var wg sync.WaitGroup
 
 	//We span processors as the number of go max procs
 	//GOMAXPROCS can be set using env var from outside
 	//runtime.GOMAXPROCS(0) queries the value and does not change it
+	var wg sync.WaitGroup
 	numOfProcessors := runtime.GOMAXPROCS(0)
 	d.processors = make([]*Processor, numOfProcessors)
 	for i := 0; i < numOfProcessors; i++ {
 		wg.Add(1)
 		go func(index int) {
 			defer wg.Done()
-			p := Processor{consumedQueue: consumeQueueName, sentToExchange: sendExchangeName}
+			p := Processor{consumedQueue: amqpinit.ConsumeQueueName, sentToExchange: amqpinit.SendExchangeName}
 			d.processors[index] = &p
 			p.startConsume(d.consumeConn, d.sendConn, index)
 		}(i)
@@ -92,7 +86,7 @@ func (d *dispatcher) RunAmqp() (err error) {
 				dispatcherLogger.Info("successfully closed the send connection")
 			}
 
-			return &ShutDownError{}
+			return &amqpinit.ShutDownError{}
 		}
 	default:
 		//Abnormal termination

@@ -1,18 +1,18 @@
-package amqphandler
+package amqpinit
 
 import (
 	"github.com/gaia-adm/pre-store-enricher/log"
 )
 
 const (
-	sendExchangeName = "events-to-index"
+	SendExchangeName = "events-to-index"
 )
 
 var initSLogger = log.GetLogger("initsend")
 
 //initForSend connects to amqp in a separate goroutine define a exchange to send
 //the messages to and send back the connection on the returned channel
-func initForSend(closedOnShutdown chan struct{}) (readyToSend chan InitResult) {
+func InitForSend(closedOnShutdown chan struct{}) (readyToSend chan InitResult) {
 	readyToSend = make(chan InitResult)
 	go func() {
 		conn, channel, err := connAndChannel(closedOnShutdown, initSLogger)
@@ -23,7 +23,7 @@ func initForSend(closedOnShutdown chan struct{}) (readyToSend chan InitResult) {
 			return
 		}
 
-		err = declareExchange(sendExchangeName, channel, initSLogger)
+		err = declareExchange(SendExchangeName, channel, initSLogger)
 		if err != nil {
 			readyToSend <- InitResult{conn, err}
 			return
