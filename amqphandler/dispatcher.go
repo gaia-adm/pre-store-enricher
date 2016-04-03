@@ -2,18 +2,18 @@ package amqphandler
 
 import (
 	"errors"
+	"github.com/gaia-adm/pre-store-enricher/amqpinit"
 	"github.com/gaia-adm/pre-store-enricher/log"
 	"github.com/streadway/amqp"
-	"sync"
 	"runtime"
-	"github.com/gaia-adm/pre-store-enricher/amqpinit"
+	"sync"
 )
 
 type dispatcher struct {
-	closedOnShutdown  chan struct{}
-	consumeConn       *amqp.Connection
-	sendConn          *amqp.Connection
-	processors        []*Processor
+	closedOnShutdown chan struct{}
+	consumeConn      *amqp.Connection
+	sendConn         *amqp.Connection
+	processors       []*Processor
 }
 
 var Dispatcher dispatcher
@@ -47,7 +47,6 @@ func (d *dispatcher) RunAmqp() (err error) {
 		d.sendConn = result.Connection
 	}
 
-
 	//We span processors as the number of go max procs
 	//GOMAXPROCS can be set using env var from outside
 	//runtime.GOMAXPROCS(0) queries the value and does not change it
@@ -58,9 +57,9 @@ func (d *dispatcher) RunAmqp() (err error) {
 		wg.Add(1)
 		go func(index int) {
 			defer wg.Done()
-			p := Processor{consumedQueue: amqpinit.ConsumeQueueName, sentToExchange: amqpinit.SendExchangeName}
-			d.processors[index] = &p
-			p.startConsume(d.consumeConn, d.sendConn, index)
+			p := NewProcessor(index, amqpinit.ConsumeQueueName, amqpinit.SendExchangeName)
+			d.processors[index] = p
+			p.startConsume(d.consumeConn, d.sendConn)
 		}(i)
 	}
 	wg.Wait()

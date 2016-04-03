@@ -1,19 +1,12 @@
-/*
-	TODO:
-	- arrange code in a better way (better encapsulation)
-	- tests
-	- run go fmt, go vet, go doc as part of pipeline
-*/
-
 package main
 
 import (
 	"github.com/gaia-adm/pre-store-enricher/amqphandler"
+	"github.com/gaia-adm/pre-store-enricher/amqpinit"
 	"github.com/gaia-adm/pre-store-enricher/log"
 	"os"
 	"os/signal"
 	"syscall"
-	"github.com/gaia-adm/pre-store-enricher/amqpinit"
 )
 
 var logger = log.GetLogger("main")

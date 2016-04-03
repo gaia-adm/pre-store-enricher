@@ -2,11 +2,11 @@ package amqphandler
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/Sirupsen/logrus"
 	"github.com/gaia-adm/pre-store-enricher/log"
 	"github.com/streadway/amqp"
 	"time"
-	"fmt"
-	"github.com/Sirupsen/logrus"
 )
 
 const (
@@ -19,11 +19,17 @@ type Processor struct {
 	consumedQueue  string
 	sentToExchange string
 	processLogger  *logrus.Entry
+	processorId    int
 }
 
-func (p *Processor) startConsume(consumeConn *amqp.Connection, sendConn *amqp.Connection, processorId int) (err error) {
-
+func NewProcessor(processorId int, consumeQueue string, sendExchange string) *Processor {
+	p := Processor{consumedQueue: consumeQueue, sentToExchange: sendExchange, processorId: processorId}
 	p.processLogger = log.GetLogger(fmt.Sprintf("%s%d", "processor", processorId))
+	return &p
+}
+
+func (p *Processor) startConsume(consumeConn *amqp.Connection, sendConn *amqp.Connection) (err error) {
+
 	p.processLogger.Info("getting amqpChannel from consume connection")
 	p.consumeChannel, err = consumeConn.Channel()
 	if err != nil {
