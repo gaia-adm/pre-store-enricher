@@ -20,7 +20,8 @@ dependencies:
 
 test:
   override:
-    - /bin/true
+    - chmod +x SystemTest.sh
+    - ./SystemTest.sh
 
 deployment:
   hub:
