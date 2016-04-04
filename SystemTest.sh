@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -x
+
 #We assume that rabbitmq and pse services are already running (check out circleci.yml for that)
 
 #creating dummy queue (test-pse-q) and bind it to event-to-index exchange

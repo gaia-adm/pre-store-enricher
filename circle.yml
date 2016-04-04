@@ -21,7 +21,7 @@ dependencies:
 test:
   override:
     - docker run -d -p 15673:15672 -p 5673:5672 -e "RABBITMQ_PASS=admin" --name rabbitmq gaiaadm/rabbitmq
-    - docker run -d -e PSE_AMQP_URL="amqp://admin:admin@rabbitmq:5672" --link rabbitmq:rabbitmq --name pse gaiaadm/pre-store-enricher
+    - docker run -d -e PSE_AMQP_URL="amqp://admin:admin@rabbitmq:5672" --link rabbitmq:rabbitmq --name pse gaiaadm/pre-store-enricher; sleep 10
     - chmod +x SystemTest.sh
     - ./SystemTest.sh
 
