@@ -22,7 +22,9 @@ test:
   override:
     #we use port 15673 and 5673 because it seems that circleci already use 15672 and 5672
     - docker run -d -p 15673:15672 -p 5673:5672 -e "RABBITMQ_PASS=admin" --name rabbitmq gaiaadm/rabbitmq
+    - docker logs rabbitmq
     - docker run -d -e PSE_AMQP_URL="amqp://admin:admin@rabbitmq:5672" --link rabbitmq:rabbitmq --name pse gaiaadm/pre-store-enricher; sleep 10
+    - docker logs pse
     - chmod +x SystemTest.sh
     - ./SystemTest.sh
 
