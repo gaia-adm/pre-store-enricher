@@ -45,16 +45,16 @@ In [circle.yml](https://github.com/gaia-adm/pre-store-enricher/blob/master/circl
 On startup the service creates two separate amqp connections on a two separate gorutines, one for consumers and one for producers as adviced in [amqp go client lib](https://godoc.org/github.com/streadway/amqp):
 *"Note: RabbitMQ will rather use TCP pushback on the network connection instead of sending basic.flow. This means that if a single channel is producing too much on the same connection, all channels using that connection will suffer, including acknowledgments from deliveries. Use different Connections if you desire to interleave consumers and producers in the same process to avoid your basic.ack messages from getting rate limited with your basic.publish messages."*
 
-Even if amqp is down, the service will keep trying to connect every 5 sec until the connection is established or someone shutdown the service (pre-store-enricher service)
+Even if amqp is down, the service will keep trying to connect every 5 sec until the connection is established or someone shutdowned the service (pre-store-enricher service)
 
-We define the amqp exchanges and queues (we also define dead letter exchange and queue for events-to-enrich)
+We define the amqp exchanges and queues (we also define dead letter exchange and queue for events-to-enrich so on Nacks the events won't disappear but will be kept in the dead letter queue - **event-to-enrich-q.deadletter**)
 
-Then we span processors according the "GOMAXPROCS" env var, each processor run two gorouting - one for consume (managed by the amqp lib) and one for produce (managed by pre-store-enricher).
+Then we span processors according the "GOMAXPROCS" env var, each processor runs two goroutines - one for consume (managed by the amqp lib) and one for produce (managed by pre-store-enricher).
 
-The service sends Nacks for events that he failed to process for any reason, but does not support confirms on produce.
+The service sends Nacks for events that it failed to process for any reason, but does not support confirms on produce.
 The events sent to the next exchange as "persist" events
 
-The service supports "graceful shutdown" (listen to SIGTERM and SIGINT) and also know to shutdown automaticlly in case that all of the processors die (The processor can die in case that amqp connection is broken for instance)
+The service supports "graceful shutdown" (listen to SIGTERM and SIGINT) and also knows to shutdown automaticlly in case that all of the processors die (The processor can die in case that amqp connection is broken for instance)
 
 # Testing
 
