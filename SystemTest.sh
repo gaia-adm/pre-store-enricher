@@ -1,8 +1,6 @@
 #!/bin/bash
 
-#running rabbit and pse
-docker run -it -p 5672:5672 -p 15672:15672 -e RABBITMQ_USER="myuser" -e RABBITMQ_PASS="mypass" --name rabbitmq tutum/rabbitmq
-docker run -it -e PSE_AMQP_URL="amqp://myuser:mypass@rabbitmq:5672" --link rabbitmq:rabbitmq --name pse gaiaadm/pre-store-enricher
+#We assume that rabbitmq and pse services are already running (check out circleci.yml for that)
 
 #creating dummy queue (test-pse-q) and bind it to event-to-index exchange
 curl --fail -S -i -u myuser:mypass -H "content-type:application/json" -XPUT -d'{"vhost":"/","name":"test-pse-q","durable":"true","auto_delete":"false","arguments":{}}' http://localhost:15672/api/queues/%2F/test-pse-q
