@@ -8,10 +8,10 @@ machine:
     - docker
 
 dependencies:
-  #pre:
-    #- sudo apt-get update && sudo apt-get install jq openssl curl
+  pre:
+    - sudo apt-get update && sudo apt-get install jq openssl curl
     # download update_service script
-    #- curl -LO https://raw.githubusercontent.com/gaia-adm/gaia-fleet/master/update_service.sh && chmod +x update_service.sh
+    - curl -LO https://raw.githubusercontent.com/gaia-adm/gaia-fleet/master/update_service.sh && chmod +x update_service.sh
 
   override:
     - docker build -t gaiaadm/pre-store-enricher .
@@ -20,6 +20,7 @@ dependencies:
 
 test:
   override:
+    #we use port 15673 and 5673 because it seems that circleci already use 15672 and 5672
     - docker run -d -p 15673:15672 -p 5673:5672 -e "RABBITMQ_PASS=admin" --name rabbitmq gaiaadm/rabbitmq
     - docker run -d -e PSE_AMQP_URL="amqp://admin:admin@rabbitmq:5672" --link rabbitmq:rabbitmq --name pse gaiaadm/pre-store-enricher; sleep 10
     - chmod +x SystemTest.sh
@@ -31,7 +32,7 @@ deployment:
     commands:
       - docker login -e $DOCKER_EMAIL -u $DOCKER_USER -p $DOCKER_PASS
       - docker push gaiaadm/pre-store-enricher
-      #- ./update_service.sh -t $CIRCLE_BRANCH -b $CIRCLE_BUILD_NUM -f pre-store-enricher.service -n pre-store-enricher
+      - ./update_service.sh -t $CIRCLE_BRANCH -b $CIRCLE_BUILD_NUM -f pre-store-enricher.service -n pre-store-enricher
 
 notify:
   webhooks:
