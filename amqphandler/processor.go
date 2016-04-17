@@ -104,6 +104,11 @@ func (p *Processor) processDeliveries(sendChannel *amqp.Channel, deliveries <-ch
 
 		p.processLogger.Debug("marshalled the msg successfully after enriching it")
 
+		p.processLogger.Debugf(
+			"after enriching the msg, length is %dB, body is: %q",
+			len(*jsonToSend),
+			*jsonToSend)
+
 		err = sendChannel.Publish(
 			p.sentToExchange, // publish to an exchange
 			d.RoutingKey,     // routing to 0 or more queues
