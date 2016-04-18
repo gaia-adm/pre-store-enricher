@@ -1,6 +1,7 @@
 package amqphandler
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/Sirupsen/logrus"
@@ -138,8 +139,13 @@ func (p *Processor) processDeliveries(sendChannel *amqp.Channel, deliveries <-ch
 }
 
 func (p *Processor) enrichMessage(in *[]byte) (out *[]byte, err error) {
+
+	jsonDecoder := json.NewDecoder(bytes.NewReader(*in))
+	jsonDecoder.UseNumber()
+
 	var f interface{}
-	err = json.Unmarshal(*in, &f)
+	err = jsonDecoder.Decode(&f)
+	//err = json.Unmarshal(*in, &f)
 	if err != nil {
 		p.processLogger.Error("failed to unmarshal msg, error is:", err)
 		return nil, err
@@ -152,6 +158,7 @@ func (p *Processor) enrichMessage(in *[]byte) (out *[]byte, err error) {
 	t := time.Now()
 	gaiaMap["incoming_time"] = t.Format(time.RFC3339)
 	m["gaia"] = &gaiaMap
+
 	jsonToSend, err := json.Marshal(m)
 	if err != nil {
 		p.processLogger.Error("failed to marshal msg, error is:", err)
