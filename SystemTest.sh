@@ -12,4 +12,4 @@ curl --fail -S -i -u admin:admin -H "content-type:application/json" -XPOST -d'{"
 curl --fail -S -i -u admin:admin -H "content-type:application/json" -XPOST -d'{"vhost":"/","name":"events-to-enrich","properties":{"delivery_mode":2,"headers":{}},"routing_key":"event.testme","delivery_mode":"2","payload":"{\"key\": \"value\"}","headers":{},"props":{},"payload_encoding":"string"}' http://localhost:15673/api/exchanges/%2f/events-to-enrich/publish
 
 #test that the message reached the dummy queue with the enrichment of gaia section
-curl --fail -S -i -u admin:admin -H "content-type:application/json" -XPOST -d'{"vhost":"/","name":"test-pse-q","truncate":"50000","requeue":"true","encoding":"auto","count":"1"}' http://localhost:15673/api/queues/%2F/test-pse-q/get | grep gaia | grep incoming_time
+curl --fail -S -i -u admin:admin -H "content-type:application/json" -XPOST -d'{"vhost":"/","name":"test-pse-q","truncate":"50000","requeue":"true","encoding":"auto","count":"1"}' http://localhost:15673/api/queues/%2F/test-pse-q/get | grep gaia | grep gaia_time | grep event_time
