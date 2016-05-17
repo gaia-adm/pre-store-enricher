@@ -6,12 +6,16 @@ import (
 	"fmt"
 	"github.com/Sirupsen/logrus"
 	"github.com/gaia-adm/pre-store-enricher/log"
+	"github.com/jmoiron/jsonq"
 	"github.com/streadway/amqp"
+	"strings"
 	"time"
 )
 
 const (
 	consumerTag = "enricher-consumer"
+	//use for getting the field location in the event that represent the event time
+	eventTimeJsonpathHeaderName = "tsField"
 )
 
 type Processor struct {
@@ -95,7 +99,8 @@ func (p *Processor) processDeliveries(sendChannel *amqp.Channel, deliveries <-ch
 			d.Body,
 		)
 
-		jsonToSend, err := p.enrichMessage(&d.Body)
+		eventTimeFieldLocation, _ := d.Headers[eventTimeJsonpathHeaderName].(string)
+		jsonToSend, err := p.enrichMessage(&d.Body, eventTimeFieldLocation)
 
 		if err != nil {
 			p.processLogger.Error("failed to enrich msg, sending Nack to amqp and continue to next msg")
@@ -138,14 +143,14 @@ func (p *Processor) processDeliveries(sendChannel *amqp.Channel, deliveries <-ch
 	p.processLogger.Info("deliveries channel closed")
 }
 
-func (p *Processor) enrichMessage(in *[]byte) (out *[]byte, err error) {
+func (p *Processor) enrichMessage(in *[]byte, eventTimeFieldLocation string) (out *[]byte, err error) {
 
 	jsonDecoder := json.NewDecoder(bytes.NewReader(*in))
-	jsonDecoder.UseNumber()
+	jsonDecoder.UseNumber() //To avoid conversion number to float to avoid data conversion when marshaling back the json
 
 	var f interface{}
 	err = jsonDecoder.Decode(&f)
-	//err = json.Unmarshal(*in, &f)
+
 	if err != nil {
 		p.processLogger.Error("failed to unmarshal msg, error is:", err)
 		return nil, err
@@ -153,17 +158,54 @@ func (p *Processor) enrichMessage(in *[]byte) (out *[]byte, err error) {
 
 	p.processLogger.Debug("unmarshalled the msg successfully")
 
-	m := f.(map[string]interface{})
+	//Adding fields
+	eventMap := f.(map[string]interface{})
 	gaiaMap := make(map[string]interface{})
-	t := time.Now()
-	gaiaMap["incoming_time"] = t.Format(time.RFC3339)
-	m["gaia"] = &gaiaMap
+	timeNow := time.Now().Format(time.RFC3339)
+	gaiaMap["gaia_time"] = timeNow
+	gaiaMap["event_time"] = extractEventTime(eventMap, eventTimeFieldLocation, timeNow)
+	eventMap["gaia"] = &gaiaMap
 
-	jsonToSend, err := json.Marshal(m)
+	jsonToSend, err := json.Marshal(eventMap)
 	if err != nil {
 		p.processLogger.Error("failed to marshal msg, error is:", err)
 		return nil, err
 	}
 
 	return &jsonToSend, nil
+}
+
+//let's try to extract the event time, if we fail to do so, event time will be set to now()
+func extractEventTime(eventMap map[string]interface{}, eventTimeFieldLocation string, timeNow string) (extractedEventTime string) {
+	extractedEventTime = timeNow
+
+	if eventTimeFieldLocation != "" {
+		jq := jsonq.NewQuery(eventMap)
+		path := convertFieldLocationToSlice(eventTimeFieldLocation)
+		strVal, err := jq.String(path...)
+		if err == nil {
+			//the value is string format.
+			//we assume it's a date in a string format so we can pass it as is
+			extractedEventTime = strVal
+		} else {
+			_, err := jq.Int(path...)
+			if err == nil {
+				//If it's a number we assume it's milli seconds or seconds from 1970.
+				//We will try to convert it to a string formated date
+				//TODO: write a code to convert the number to string
+				extractedEventTime = "needToWriteACodeToConvert"
+			}
+			//It's not a string nor a number - hence we will use the default now()
+		}
+	}
+
+	return extractedEventTime
+}
+
+func convertFieldLocationToSlice(fieldLocation string) (fieldLocationSlice []string) {
+
+	f := func(c rune) bool {
+		return c == '.' || c == '[' || c == ']'
+	}
+	return strings.FieldsFunc(fieldLocation, f)
 }
