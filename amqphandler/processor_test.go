@@ -138,7 +138,7 @@ func TestEventTimeExtractingStringFormat(t *testing.T) {
 	//We validate that event_time presented and has time value that equals to the input
 	eventTime, _ := gaiamap["event_time"]
 	if eventTime.(string) != "2016-05-17T15:27:16+03:00" {
-		t.Fatal("event_time:", eventTime.(string), " should be the one that presented in the event json: 2016-05-17T15:27:16+03:00")
+		t.Fatal("event contained the time 2016-05-17T15:27:16+03:00, but event_time was: ", eventTime.(string))
 	}
 }
 
@@ -156,8 +156,8 @@ func TestEventTimeExtractingUnixTimeSecFormat(t *testing.T) {
 	//We validate that event_time presented and has time value that equals to the input
 	//(in RFC3339 format)
 	eventTime, _ := gaiamap["event_time"]
-	if eventTime.(string) != "2016-04-17T13:29:38+03:00" {
-		t.Fatal("event_time:", eventTime.(string), " should be the one that presented in the event json: 2016-05-17T15:27:16+03:00")
+	if eventTime.(string) != "2016-04-17T10:29:38Z" {
+		t.Fatal("event contained the time 2016-04-17T10:29:38Z, but event_time was: ", eventTime.(string))
 	}
 }
 
@@ -175,8 +175,8 @@ func TestEventTimeExtractingUnixTimeMilliSecFormat(t *testing.T) {
 	//We validate that event_time presented and has time value that equals to the input
 	//(in RFC3339 format without the milliseconds part)
 	eventTime, _ := gaiamap["event_time"]
-	if eventTime.(string) != "2016-04-17T13:29:38+03:00" {
-		t.Fatal("event_time:", eventTime.(string), " should be the one that presented in the event json: 2016-05-17T15:27:16+03:00")
+	if eventTime.(string) != "2016-04-17T10:29:38Z" {
+		t.Fatal("event contained the time 2016-04-17T10:29:38Z, but event_time was: ", eventTime.(string))
 	}
 }
 

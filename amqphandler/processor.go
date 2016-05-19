@@ -198,7 +198,8 @@ func (p *Processor) extractEventTime(eventMap map[string]interface{}, eventTimeF
 				}
 				//We do not check the err as we know for sure this is a number
 				asInt64, _ := strconv.ParseInt(asStr, 10, 64)
-				extractedEventTime = time.Unix(asInt64, 0).Format(time.RFC3339)
+				l, _ := time.LoadLocation("UTC")
+				extractedEventTime = time.Unix(asInt64, 0).In(l).Format(time.RFC3339)
 			default:
 				p.processLogger.Warn("failed to extract tdField for location: ", eventTimeFieldLocation, ", the extracted field is: ", val, " and it's not string nor number type")
 			}
