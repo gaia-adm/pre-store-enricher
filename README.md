@@ -71,3 +71,4 @@ We have unit test [processor_test.go](https://github.com/gaia-adm/pre-store-enri
 We also have system test [SystemTest.sh](https://github.com/gaia-adm/pre-store-enricher/blob/master/SystemTest.sh) to check the end-to-end flow (from queue to queue)
 
 Both tests are executed during building the service in [CircleCI](https://circleci.com/gh/gaia-adm/pre-store-enricher)
+
