@@ -8,6 +8,7 @@ import (
 	"github.com/gaia-adm/pre-store-enricher/log"
 	"github.com/jmoiron/jsonq"
 	"github.com/streadway/amqp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -163,7 +164,7 @@ func (p *Processor) enrichMessage(in *[]byte, eventTimeFieldLocation string) (ou
 	gaiaMap := make(map[string]interface{})
 	timeNow := time.Now().Format(time.RFC3339)
 	gaiaMap["gaia_time"] = timeNow
-	gaiaMap["event_time"] = extractEventTime(eventMap, eventTimeFieldLocation, timeNow)
+	gaiaMap["event_time"] = p.extractEventTime(eventMap, eventTimeFieldLocation, timeNow)
 	eventMap["gaia"] = &gaiaMap
 
 	jsonToSend, err := json.Marshal(eventMap)
@@ -176,26 +177,35 @@ func (p *Processor) enrichMessage(in *[]byte, eventTimeFieldLocation string) (ou
 }
 
 //let's try to extract the event time, if we fail to do so, event time will be set to now()
-func extractEventTime(eventMap map[string]interface{}, eventTimeFieldLocation string, timeNow string) (extractedEventTime string) {
+func (p *Processor) extractEventTime(eventMap map[string]interface{}, eventTimeFieldLocation string, timeNow string) (extractedEventTime string) {
 	extractedEventTime = timeNow
 
 	if eventTimeFieldLocation != "" {
 		jq := jsonq.NewQuery(eventMap)
 		path := convertFieldLocationToSlice(eventTimeFieldLocation)
-		strVal, err := jq.String(path...)
+		val, err := jq.Interface(path...)
 		if err == nil {
-			//the value is string format.
-			//we assume it's a date in a string format so we can pass it as is
-			extractedEventTime = strVal
-		} else {
-			_, err := jq.Int(path...)
-			if err == nil {
-				//If it's a number we assume it's milli seconds or seconds from 1970.
-				//We will try to convert it to a string formated date
-				//TODO: write a code to convert the number to string
-				extractedEventTime = "needToWriteACodeToConvert"
+			switch val.(type) {
+			case string:
+				//the value is string format.
+				//we assume it's a date in a string format so we can pass it as is
+				extractedEventTime = val.(string)
+			case json.Number:
+				asStr := val.(json.Number).String()
+				if len(asStr) > 10 {
+					//we extract only the sec (without the milli/nano seconds part)
+					asStr = asStr[0:10]
+				}
+				//We do not check the err as we know for sure this is a number
+				asInt64, _ := strconv.ParseInt(asStr, 10, 64)
+				extractedEventTime = time.Unix(asInt64, 0).Format(time.RFC3339)
+			default:
+				p.processLogger.Warn("failed to extract tdField for location: ", eventTimeFieldLocation, ", the extracted field is: ", val, " and it's not string nor number type")
 			}
-			//It's not a string nor a number - hence we will use the default now()
+
+		} else {
+			p.processLogger.Warn("failed to extract tsField for location: ", eventTimeFieldLocation, ", why: ", err)
+
 		}
 	}
 

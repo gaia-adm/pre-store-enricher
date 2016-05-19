@@ -124,8 +124,64 @@ func TestEventTimeInvalidFieldLocation(t *testing.T) {
 	}
 }
 
-func TestEventTimeExtractingStringFormatedTime(t *testing.T) {
+func TestEventTimeExtractingStringFormat(t *testing.T) {
 	in := []byte("{\"folder\": {\"time\":\"2016-05-17T15:27:16+03:00\"}}")
+	p := NewProcessor(1, "queue", "exchange")
+	out, err := p.enrichMessage(&in, "folder.time")
+
+	if err != nil {
+		t.Fatal("err was return on passing the valid json: ", string(in), ", error is:", err)
+	}
+
+	gaiamap := extractingGaiaMap(t, out)
+
+	//We validate that event_time presented and has time value that equals to the input
+	eventTime, _ := gaiamap["event_time"]
+	if eventTime.(string) != "2016-05-17T15:27:16+03:00" {
+		t.Fatal("event_time:", eventTime.(string), " should be the one that presented in the event json: 2016-05-17T15:27:16+03:00")
+	}
+}
+
+func TestEventTimeExtractingUnixTimeSecFormat(t *testing.T) {
+	in := []byte("{\"folder\": {\"time\":1460888978}}")
+	p := NewProcessor(1, "queue", "exchange")
+	out, err := p.enrichMessage(&in, "folder.time")
+
+	if err != nil {
+		t.Fatal("err was return on passing the valid json: ", string(in), ", error is:", err)
+	}
+
+	gaiamap := extractingGaiaMap(t, out)
+
+	//We validate that event_time presented and has time value that equals to the input
+	//(in RFC3339 format)
+	eventTime, _ := gaiamap["event_time"]
+	if eventTime.(string) != "2016-04-17T13:29:38+03:00" {
+		t.Fatal("event_time:", eventTime.(string), " should be the one that presented in the event json: 2016-05-17T15:27:16+03:00")
+	}
+}
+
+func TestEventTimeExtractingUnixTimeMilliSecFormat(t *testing.T) {
+	in := []byte("{\"folder\": {\"time\":1460888978777}}")
+	p := NewProcessor(1, "queue", "exchange")
+	out, err := p.enrichMessage(&in, "folder.time")
+
+	if err != nil {
+		t.Fatal("err was return on passing the valid json: ", string(in), ", error is:", err)
+	}
+
+	gaiamap := extractingGaiaMap(t, out)
+
+	//We validate that event_time presented and has time value that equals to the input
+	//(in RFC3339 format without the milliseconds part)
+	eventTime, _ := gaiamap["event_time"]
+	if eventTime.(string) != "2016-04-17T13:29:38+03:00" {
+		t.Fatal("event_time:", eventTime.(string), " should be the one that presented in the event json: 2016-05-17T15:27:16+03:00")
+	}
+}
+
+func TestEventTimeExtractingBadFormat(t *testing.T) {
+	in := []byte("{\"folder\": {\"time\":false}}")
 	p := NewProcessor(1, "queue", "exchange")
 	out, err := p.enrichMessage(&in, "folder.time")
 
@@ -137,9 +193,28 @@ func TestEventTimeExtractingStringFormatedTime(t *testing.T) {
 
 	//We validate that event_time presented and has time value (which is now())
 	eventTime, _ := gaiamap["event_time"]
-	if eventTime.(string) != "2016-05-17T15:27:16+03:00" {
-		t.Fatal("event_time:", eventTime.(string), " should be the one that presented in the event json: 2016-05-17T15:27:16+03:00")
+	_, err = time.Parse(time.RFC3339, eventTime.(string))
+	if err != nil {
+		t.Fatal("event_time:", eventTime.(string), " is not RFC3339 complient, err: ", err)
 	}
+}
+
+func extractingGaiaMap(t *testing.T, jsonData *[]byte) map[string]interface{} {
+
+	//Unmarshal the output json and check "gaia" section exists with valid attributes
+	var f interface{}
+	err := json.Unmarshal(*jsonData, &f)
+	if err != nil {
+		t.Fatal("failed to unmarshal the outout: ", string(*jsonData), ", error is:", err)
+	}
+
+	m := f.(map[string]interface{})
+	val, ok := m["gaia"]
+	if !ok {
+		t.Fatal("expecting the entry \"gaia\" to be presented after enrichment")
+	}
+
+	return val.(map[string]interface{})
 }
 
 //Conversion function only takes care of '.', '[' and ']'
@@ -168,22 +243,4 @@ func TestConvertFieldLocationIntoSlice(t *testing.T) {
 	if len(out) != 4 || out[0] != "test1" || out[1] != "0\"!@#$%^&*(),;" || out[2] != "test2" || out[3] != "1" {
 		t.Fatal("Conversion failed: ", out)
 	}
-}
-
-func extractingGaiaMap(t *testing.T, jsonData *[]byte) map[string]interface{} {
-
-	//Unmarshal the output json and check "gaia" section exists with valid attributes
-	var f interface{}
-	err := json.Unmarshal(*jsonData, &f)
-	if err != nil {
-		t.Fatal("failed to unmarshal the outout: ", string(*jsonData), ", error is:", err)
-	}
-
-	m := f.(map[string]interface{})
-	val, ok := m["gaia"]
-	if !ok {
-		t.Fatal("expecting the entry \"gaia\" to be presented after enrichment")
-	}
-
-	return val.(map[string]interface{})
 }
