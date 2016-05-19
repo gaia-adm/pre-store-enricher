@@ -1,19 +1,27 @@
 # Preface
 Enrich the event with data pre storing it into the DB.
 
-**For instance:** Adding information such as "incoming_time", so even if the event does not have any time information Gaia consumer will be able at least to retrieve it according to the arrival time of the event into Gaia servers.
+The service consumes the events from amqp exchange **events-to-enrich** and publishs the enriched events into amqp exchange **events-to-index**
 
-Here is an example of event post enrichment (the **"gaia"** json part is the enrichement info):
+**Today we enrich the event with two fields (that are always exist):**
+
+1. **gaia_time** - Contains the time when the event riched pre-store-enricher
+
+2. **event_time** - In case that rabbitmq header **tdField** was presented and contained a vaild path, **event_time** will contain the field value of that path. If the field was a number, we assume it is Unix time and convert it into RFC3339 (without the millisec part if it was presented). If it was a string we assume it is already a date in a valid format as copy it as is. If we do not find the path or tsField header was not presented - **event_time** will contain the exact time as described in **gaia_time**
+
+
+Here is an example of event post enrichment (the **"gaia"** json part has the enrichement info. **gaia_time** contains the arrival time to pre-store-enricher and **event_time** was extracted according to **tdField Rabbitmq header** that contained the path: **info.time**):
 ```javascript
 {
   "gaia":
-    {"incoming_time":"2016-04-03T12:42:40Z"},
+    {"gaia_time":"2016-05-19T12:42:40Z", 
+     "event_time":"2016-04-17T13:29:38+03:00"},
   //event properties
   "key":"value" 
+  "info": 
+    { "time": 1460888978 }
 }
 ```
-
-The service consumes the events from amqp exchange **events-to-enrich** and publishs the enriched events into amqp exchange **events-to-index**
 
 # Building the service
 The service is written in [golang](https://golang.org/)
