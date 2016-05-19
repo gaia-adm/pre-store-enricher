@@ -199,6 +199,25 @@ func TestEventTimeExtractingBadFormat(t *testing.T) {
 	}
 }
 
+func TestEventTimeExtractingFromArray(t *testing.T) {
+	in := []byte("{\"folder\": [{\"time\":1460888978777}, {\"time\":2222222222222}]}")
+	p := NewProcessor(1, "queue", "exchange")
+	out, err := p.enrichMessage(&in, "folder[0].time")
+
+	if err != nil {
+		t.Fatal("err was return on passing the valid json: ", string(in), ", error is:", err)
+	}
+
+	gaiamap := extractingGaiaMap(t, out)
+
+	//We validate that event_time presented and has time value that equals to the input
+	//(in RFC3339 format without the milliseconds part)
+	eventTime, _ := gaiamap["event_time"]
+	if eventTime.(string) != "2016-04-17T10:29:38Z" {
+		t.Fatal("event contained the time 2016-04-17T10:29:38Z, but event_time was: ", eventTime.(string))
+	}
+}
+
 func extractingGaiaMap(t *testing.T, jsonData *[]byte) map[string]interface{} {
 
 	//Unmarshal the output json and check "gaia" section exists with valid attributes

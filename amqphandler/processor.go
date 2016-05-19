@@ -162,7 +162,8 @@ func (p *Processor) enrichMessage(in *[]byte, eventTimeFieldLocation string) (ou
 	//Adding fields
 	eventMap := f.(map[string]interface{})
 	gaiaMap := make(map[string]interface{})
-	timeNow := time.Now().Format(time.RFC3339)
+	l, _ := time.LoadLocation("UTC")
+	timeNow := time.Now().In(l).Format(time.RFC3339)
 	gaiaMap["gaia_time"] = timeNow
 	gaiaMap["event_time"] = p.extractEventTime(eventMap, eventTimeFieldLocation, timeNow)
 	eventMap["gaia"] = &gaiaMap
