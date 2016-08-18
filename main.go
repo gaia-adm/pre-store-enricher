@@ -24,9 +24,13 @@ func main() {
 
 	err := amqphandler.Dispatcher.RunAmqp()
 
+	exitCode := 0
 	if _, ok := err.(*amqpinit.ShutDownError); ok {
 		logger.Info("exiting from main, due to shotdown: ", err)
 	} else {
 		logger.Error("exiting from main unexpectedly!: ", err)
+		exitCode = 1
 	}
+	
+	os.Exit(exitCode)
 }
